@@ -1,9 +1,11 @@
 (ns sequoia.core
   (:require [clj-time.core :as t]
             [clojure.core.async :as a]
-            [clojure.java.io :refer [writer]]))
+            [clojure.java.io :refer [output-stream]]
+            [clojure.data.fressian :as f]
+            [clojure.data :as d]))
 
-(def sequoia-version 0.1)
+(def sequoia-version "0.1.0")
 
 (defn- add-meta
   ([pds]
@@ -19,18 +21,23 @@
      {:sequoia sequoia-version})))
 
 (defn- write-dds
-  [out dds]
-  (.write (str dds "\n")))
+  [wrt out dds]
+  (.writeObject wrt dds)
+  (.flush out))
 
 (defn- init-writer!
   [file chan]
-  (let [out (writer file)
+  (let [out (output-stream file)
+        wrt (f/create-writer out)
         run (fn []
               (loop [msg (a/<!! chan)]
                 (if (or (= msg :shutdown) (nil? msg))
-                  nil
                   (do
-                    (write-dds out msg)
+                    (.flush out)
+                    (.close wrt)
+                    nil)
+                  (do
+                    (write-dds wrt out msg)
                     (recur (a/<!! chan))))))]
     (future run)))
 
@@ -56,8 +63,6 @@
   (a/close! (db :io))
   db)
 
-;; (a/>!! (a/chan) :shutdown)
-
 (defn restart!
   [db]
   (->
@@ -78,12 +83,16 @@
      (update-in [:latest] conj dds)
      (update-in [:all] conj dds))))
 
+(defn- changes
+  [previous current]
+  ((d/diff previous current) 1))
+
 (defn update!
   [db previous current]
   (let [dds (add-meta previous current)]
     (->
      db
-     (save! dds)
+     (save! (changes previous dds))
      (update-in [:latest] disj previous)
      (update-in [:latest] conj dds)
      (update-in [:all] conj dds))))
@@ -93,7 +102,7 @@
   (let [dds (add-meta current current true)]
     (->
      db
-     (save! dds)
+     (save! (changes current dds))
      (update-in [:latest] disj current)
      (update-in [:all] conj dds))))
 

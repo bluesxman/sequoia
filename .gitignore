@@ -1,2 +1,4 @@
 /target
-
+/*.frs
+/*.fress
+/.nrepl-port
