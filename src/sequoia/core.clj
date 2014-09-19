@@ -16,9 +16,21 @@
    (with-meta
      (assoc current
        :time (t/now)
-       :parent previous
+       :previous previous
        :deleted? deleted)
      {:sequoia sequoia-version})))
+
+  ;; How to write out parents? Need a way to identify across VMs.  Options:
+  ;;
+  ;; 1) uuid
+  ;; 2) file position
+
+  ;; Use file position
+  ;; maintain a map of current dds to file position
+  ;; do this while loading as well
+  ;; serialize the file position
+  ;; remove the file position from the dds?
+  ;; file position probably needs to be sent back on a channel
 
 (defn- write-dds
   [wrt out dds]
@@ -43,15 +55,21 @@
 
 (defn new-db!
   [file]
-  (let [io (a/chan)]
+  (let [out (output-stream file)]
     (init-writer! file io)
     {:latest #{}
      :all #{}
      :file file
-     :io io}))
+     :out out
+     :writer (f/create-writer out)}))
 
 (defn load-db
-  [file])
+  [file]
+  ;; build up map of {position:long object:map}
+  ;; reading beginning to end loads old first therefore never have to
+  ;; goto disk for a parent
+
+  )
 
 (defn annihilate!
   "Obliterate any and all history prior to time 't'"
@@ -107,7 +125,7 @@
      (update-in [:all] conj dds))))
 
 (defn history [dds]
-  (let [parent (dds :parent)]
+  (let [parent (dds :previous)]
     (if parent
       (cons parent (lazy-seq (history parent)))
       nil)))
