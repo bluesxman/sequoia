@@ -63,6 +63,10 @@
 
 (row->obj "MDT" ["2014-09-11" "00:00:00" "4305.21" "156905"])
 
+(defn valid?
+  [row]
+  (= 4 (count row)))
+
 (defn uri-into-db
   [db uri]
   (->>
@@ -70,7 +74,8 @@
    (split-lines)
    (drop 5)
    (map #(split % #"\s+"))
-   (map row->obj "MDT")
+   (filter valid?)
+   (map #(row->obj "MDT" %))
 ;;    (reduce #(create! %) db)
 ;;    (add-history! db)
    )) ;; what's an elegant solution to composability for create/update for a history of a single thing???
@@ -80,7 +85,7 @@
    (split-lines)
    (drop 5)
    (map #(split % #"\s+"))
-   (remove #(= 4 (count %)))
+   (filter valid?)
    (map #(row->obj "MDT" %))
    )
 
