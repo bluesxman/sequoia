@@ -1,4 +1,4 @@
-(ns sequoia.core
+(ns sequoia.example
   (:require [clojure.java.io :as io]
             [clojure.data.fressian :as f]
             [clojure.data :as d]
@@ -89,7 +89,9 @@
    (map #(row->obj "MDT" %))
    )
 
-(uri-into-db nil uri)
+(def elephant (uri-into-db nil uri))
+
+(take 5 elephant)
 
 ;; 1) create many from seq
 ;; 2) create one from seq
@@ -106,3 +108,8 @@
 ;; 4:  (apply update! db prev seq)
 ;; 5:  (update! db prev cur)
 
+;; 1) create db
+;; 2) create lake
+;; 3) add state data
+;; 4) load copy of db
+;; 5) test for equality

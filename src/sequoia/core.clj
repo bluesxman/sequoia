@@ -7,18 +7,16 @@
 
 (def sequoia-version "0.1.0")
 
-(defn- add-meta
+(defn- pds->dds
   ([pds]
-   (add-meta nil pds false))
+   (pds->dds nil pds false))
   ([previous current]
-   (add-meta previous current false))
+   (pds->dds previous current false))
   ([previous current deleted]
-   (with-meta
-     (assoc current
-       :time (t/now)
-       :previous previous
-       :deleted? deleted)
-     {:sequoia sequoia-version})))
+   (assoc current
+     :sequoia/time (t/now)
+     :sequoia/previous previous
+     :sequoia/deleted? deleted)))
 
   ;; How to write out parents? Need a way to identify across VMs.  Options:
   ;;
@@ -56,12 +54,12 @@
 (defn new-db!
   [file]
   (let [out (output-stream file)]
-    (init-writer! file io)
     {:latest #{}
      :all #{}
      :file file
      :out out
-     :writer (f/create-writer out)}))
+     :writer (f/create-writer out)
+     :version sequoia-version}))
 
 (defn load-db
   [file]
@@ -94,7 +92,7 @@
 
 (defn create!
   [db pds]
-  (let [dds (add-meta pds)]
+  (let [dds (pds->dds pds)]
     (->
      db
      (save! dds)
@@ -107,7 +105,7 @@
 
 (defn update!
   [db previous current]
-  (let [dds (add-meta previous current)]
+  (let [dds (pds->dds previous current)]
     (->
      db
      (save! (changes previous dds))
@@ -117,7 +115,7 @@
 
 (defn delete!
   [db current]
-  (let [dds (add-meta current current true)]
+  (let [dds (pds->dds current current true)]
     (->
      db
      (save! (changes current dds))
