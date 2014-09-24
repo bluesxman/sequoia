@@ -113,3 +113,52 @@
 ;; 3) add state data
 ;; 4) load copy of db
 ;; 5) test for equality
+
+
+
+(sq/merge! [db lake] change)
+(reduce sq/merge! [db lake] changes)
+
+;; update: map -> map -> map -> map
+;; update: database previous current new-database
+
+;; merge: map -> map -> map -> vector map
+;; merge: database previous change [new-database current]
+
+;; into: map -> map -> seq map -> vector map
+;; into: database previous changes [new-database current]
+
+(def create!
+  ([db cur])
+  ([db initial changes]
+   (into! (create! db initial) initial changes)))
+
+(def create-each!
+  [db cs]
+  (reduce create! db cs))
+
+(def create-by!
+  ([timefn db cur])
+  ([timefn db initial changes]))
+
+(def merge!
+  ([[db prev] change]
+   (merge! db prev change))
+  ([db prev change]
+   (let [cur (merge prev change)]
+     [(update! db prev cur) cur])))
+
+(def into!
+  [db prev changes]
+  (reduce merge! [db prev] changes))
+
+(def db
+  {:timefn (let [time (t/now)] (fn [pds] time))
+   :previous
+   :deleted?
+   :uuid})
+
+;; create! =
+;; update! = declare
+;; merge! = change
+;; into = change-all
