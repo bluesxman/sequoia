@@ -3,20 +3,36 @@
             [clojure.core.async :as a]
             [clojure.java.io :refer [output-stream]]
             [clojure.data.fressian :as f]
-            [clojure.data :as d]))
+            [clojure.data :as d]
+            [clj-tuple :refer [tuple]]))
+
+
 
 (def sequoia-version "0.1.0")
 
-(defn- pds->dds
-  ([pds]
-   (pds->dds nil pds false))
-  ([previous current]
-   (pds->dds previous current false))
-  ([previous current deleted]
-   (assoc current
-     :sequoia/time (t/now)
-     :sequoia/previous previous
-     :sequoia/deleted? deleted)))
+(defrecord Transaction [id prev time deleted?])
+
+(def foo (Transaction. 1 nil t/now false))
+(let [{a :id} foo] a)
+
+(def bar (tuple 1 2))
+
+(let [[x y] bar]
+  y)
+
+(defrecord Tx [journal entry])
+
+(defn- gen-tx
+  ([]
+   (gen-tx nil false))
+  ([previous]
+   (gen-tx previous false))
+  ([previous deleted]
+   (gen-tx previous deleted (t/now)))
+  ([previous deleted time]
+   {:time time
+    :previous previous
+    :deleted? deleted}))
 
   ;; How to write out parents? Need a way to identify across VMs.  Options:
   ;;
@@ -54,8 +70,8 @@
 (defn new-db!
   [file]
   (let [out (output-stream file)]
-    {:latest #{}
-     :all #{}
+    {:latest {}
+     :all {}
      :file file
      :out out
      :writer (f/create-writer out)
@@ -86,45 +102,58 @@
    (load-db (db :file))))
 
 (defn- save!
-  [db dds]
-  (a/>!! (db :io) dds)
+  [db pds tx]
+  ;; impl
   db)
 
 (defn create!
   [db pds]
-  (let [dds (pds->dds pds)]
+  (let [tx (gen-tx)]
     (->
      db
-     (save! dds)
-     (update-in [:latest] conj dds)
-     (update-in [:all] conj dds))))
+     (save! pds tx)
+     (update-in [:latest] assoc pds tx)
+     (update-in [:all] assoc pds tx))))
+
+
+(second (d/diff {:name "bob" :age 21}
+         {:name "bob" :age 22 :job "Chef"}))
+(->
+ (new-db! "foo.frs")
+ (create! {:name "bob" :age 21})
+ (update! {:name "bob" :age 21}
+          {:name "bob" :age 22 :job "Chef"}))
+
 
 (defn- changes
   [previous current]
-  ((d/diff previous current) 1))
+  (second (d/diff previous current)))
 
 (defn update!
   [db previous current]
-  (let [dds (pds->dds previous current)]
+  (let [tx (gen-tx previous)]
     (->
      db
-     (save! (changes previous dds))
-     (update-in [:latest] disj previous)
-     (update-in [:latest] conj dds)
-     (update-in [:all] conj dds))))
+     (save! (changes previous current) tx)
+     (update-in [:latest] dissoc previous)
+     (update-in [:latest] assoc current tx)
+     (update-in [:all] assoc current tx))))
+
+;; ??? using the pds as the key means that a delete erases history
+;; Idea: use a deleted set where :all does not contain :deleted
 
 (defn delete!
   [db current]
-  (let [dds (pds->dds current current true)]
+  (let [tx (gen-tx current true)]
     (->
      db
-     (save! (changes current dds))
-     (update-in [:latest] disj current)
-     (update-in [:all] conj dds))))
+     (save! {} tx)
+     (update-in [:latest] dissoc current)
+     (update-in [:all] assoc current tx))))
 
-(defn history [dds]
-  (let [parent (dds :previous)]
+(defn history [db pds]
+  (let [parent (get-in db [:all pds])]
     (if parent
-      (cons parent (lazy-seq (history parent)))
+      (cons parent (lazy-seq (history db parent)))
       nil)))
 
