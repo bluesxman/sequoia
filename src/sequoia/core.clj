@@ -3,9 +3,24 @@
             [clojure.core.async :as a]
             [clojure.java.io :refer [output-stream]]
             [clojure.data.fressian :as f]
-            [clojure.data :as d]))
+            [clojure.data :as d]
+            [clj-tuple :refer [tuple]]))
+
+
 
 (def sequoia-version "0.1.0")
+
+(defrecord Transaction [id prev time deleted?])
+
+(def foo (Transaction. 1 nil t/now false))
+(let [{a :id} foo] a)
+
+(def bar (tuple 1 2))
+
+(let [[x y] bar]
+  y)
+
+(defrecord Tx [journal entry])
 
 (defn- gen-tx
   ([]

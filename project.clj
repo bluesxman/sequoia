@@ -6,4 +6,5 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [clj-time "0.8.0"]
                  [org.clojure/core.async "0.1.338.0-5c5012-alpha"]
-                 [org.clojure/data.fressian "0.2.0"]])
+                 [org.clojure/data.fressian "0.2.0"]
+                 [clj-tuple "0.1.6"]])
