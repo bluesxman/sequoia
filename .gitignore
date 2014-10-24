@@ -2,3 +2,5 @@
 /*.frs
 /*.fress
 /.nrepl-port
+/.idea
+sequoia.iml
