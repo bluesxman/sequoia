@@ -43,6 +43,14 @@
   [map path key]
   ())
 
+(defn assoc-at
+  "Associate all key-value pairs with a map/vector at a location specified by
+  the path."
+  [map [p & ps] & kvs]
+  (if p
+    (assoc map p (apply assoc-at (map p) [ps] kvs))
+    (apply assoc map kvs)))
+
 (def wh5 {:type :warehouse :id 5 :city "Denver" :state "CO"})
 (def wh6 {:type :warehouse :id 6 :city "Boulder" :state "CO"})
 (def pkg1 {:type :package :id 1 :from "Amazon" :to "123 Foo Rd"})
@@ -88,16 +96,16 @@
   (->
     db5
     (disj-in [:trk12 :packages] :pkg2)
-    (assoc-in [:pkg2 :signed] "Jay")))
+    (assoc-at [:pkg2] :signed "Jay" :delivered true)))
 
 (def db7
   (->
     db6
     (disj-in [:trk17 :packages] :pkg3)
-    (assoc-in [:pkg3 :signed] "Bob")))
+    (assoc-at [:pkg3] :signed "Bob" :delivered true)))
 
 (def db8
   (->
     db7
     (disj-in [:trk12 :packages] :pkg1)
-    (assoc-in [:pkg1 :signed] "Bev")))
+    (assoc-at [:pkg1] :signed "Bev" :delivered true)))
