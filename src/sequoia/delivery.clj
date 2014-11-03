@@ -51,6 +51,32 @@
     (assoc map p (apply assoc-at (map p) [ps] kvs))
     (apply assoc map kvs)))
 
+(defn db-when
+  "Returns the value of the database at a time in its history"
+  [db time]
+  (first (subseq (:history db) <= time)))
+
+(defrecord Identity [uuid])
+
+(defn id?
+  "Tests whether x is a Sequoia identity"
+  [x]
+  (instance? Identity x))
+
+(defn fetch-in
+  "Takes the value of the database at an instant in time and a path and returns
+  the value at that path.  For identities in the path, "
+  [db path]
+  (loop [[k & ks] path
+         cur-val db]
+    (if k
+      (if (id? k)
+        (recur ks (db k))
+        (recur ks (cur-val k)))
+      cur-val)))
+
+;; db keeps ref to prev db and to a sorted-map by time of all previous dbs
+
 (def wh5 {:type :warehouse :id 5 :city "Denver" :state "CO"})
 (def wh6 {:type :warehouse :id 6 :city "Boulder" :state "CO"})
 (def pkg1 {:type :package :id 1 :from "Amazon" :to "123 Foo Rd"})
@@ -109,3 +135,9 @@
     db7
     (disj-in [:trk12 :packages] :pkg1)
     (assoc-at [:pkg1] :signed "Bev" :delivered true)))
+
+(filter #(= 1 (count (get-in [:packages] %))) (vals db3))
+
+{:austin {:state "Texas" :population 500000}
+ :jan {:age 20 :birthplace :austin}
+ :doug {:age 23 :birthplace :austin}}
