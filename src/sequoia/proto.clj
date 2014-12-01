@@ -114,5 +114,24 @@
 
 (map ider2 states1)
 
+(defn journal
+  []
+  {:entities {} :prev nil})
 
+(def jrn (journal))
+(partition-by :time states1)
 
+(defn index
+  [maps k]
+  (loop [idx {}
+         ms maps]
+    (if (empty? ms)
+      idx
+      (let [m (first ms)
+            v (k m)
+            nxt (if (contains? idx v)
+                  (update-in idx [v] conj m)
+                  (assoc idx v [m]))]
+        (recur nxt (rest ms))))))
+
+(index states1 :time)
