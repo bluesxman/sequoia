@@ -122,8 +122,8 @@
 (partition-by :time states1)
 
 (defn index
-  [maps k]
-  (loop [idx {}
+  [index-map maps k]
+  (loop [idx index-map
          ms maps]
     (if (empty? ms)
       idx
@@ -134,4 +134,26 @@
                   (assoc idx v [m]))]
         (recur nxt (rest ms))))))
 
-(index states1 :time)
+(index {} states1 :time)
+
+(def time-idx (index (sorted-map) states1 :time))
+
+(->>
+  (subseq time-idx > "5:00" < "5:03")
+  (vals)
+  (apply concat))
+
+(defn search
+  ([sorted-idx test key]
+    (->>
+      (subseq sorted-idx test key)
+      (vals)
+      (apply concat)))
+  ([sorted-idx start-test start-key end-test end-key]
+    (->>
+      (subseq sorted-idx start-test start-key end-test end-key)
+      (vals)
+      (apply concat))))
+
+(search time-idx > "5:00" < "5:03")
+(search time-idx < "5:01")
